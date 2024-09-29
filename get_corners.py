@@ -7,24 +7,25 @@ from datetime import datetime as dt, timedelta
 
 
 def get_stats():
-    url = ['https://understat.com/team/','/2023']
+    year = 2024
+    url = 'https://understat.com/team/{team}/{year}'
     teams = ['Arsenal',
     'Aston Villa',
     'Bournemouth',
     'Brentford',
     'Brighton',
-    'Burnley',
     'Chelsea',
     'Crystal Palace',
     'Everton',
     'Fulham',
+    'Ipswich',
+    'Leicester',
     'Liverpool',
-    'Luton',
     'Manchester City',
     'Manchester United',
     'Newcastle United',
     'Nottingham Forest',
-    'Sheffield United',
+    'Southampton',
     'Tottenham',
     'West Ham',
     'Wolverhampton Wanderers'
@@ -33,8 +34,8 @@ def get_stats():
 
     team_stats = dict()
     for team in teams:
-        print(f'{url[0]}{team.replace(" ","_")}{url[1]}')
-        page = requests.get(f'{url[0]}{team.replace(" ","_")}{url[1]}')
+        print(url.format(team=team.replace(' ','_'), year=year))
+        page = requests.get(url.format(team=team.replace(' ','_'), year=year))
         soup = BeautifulSoup(page.text, 'html.parser')
 
         script_tag = soup.find('script', string=lambda x: 'statisticsData' in x)
@@ -82,17 +83,19 @@ def get_stats():
         json.dump(team_stats, f, ensure_ascii=False, indent=4)
 
 
-with open('data_time.txt', 'r') as f:
-    last_time_str = f.read()
-try:
-    last_time = dt.strptime(last_time_str, '%Y-%m-%d %H:%M:%S.%f')
-    if (dt.now() - last_time).total_seconds() > 8.64e10:
-        get_stats()
-except:
-    get_stats()
+# with open('data_time.txt', 'r') as f:
+#     last_time_str = f.read()
+# try:
+#     last_time = dt.strptime(last_time_str, '%Y-%m-%d %H:%M:%S.%f')
+#     if (dt.now() - last_time).total_seconds() > 8.64e10:
+#         get_stats()
+# except:
+#     get_stats()
 
-with open('data.json', 'r', encoding='utf-8') as f:
-    team_stats = json.load(f)
+# with open('data.json', 'r', encoding='utf-8') as f:
+#     team_stats = json.load(f)
+
+get_stats()
 
 df = pd.DataFrame.from_dict(team_stats)
 df = df.transpose()
