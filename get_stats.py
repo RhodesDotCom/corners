@@ -2,17 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import pandas as pd
-import sys
-import time
-from collections import OrderedDict
-
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-
+from pprint import pprint as pp
 
 YEAR = 2024
 URL = 'https://understat.com/team/{team}/{year}'
@@ -27,39 +17,20 @@ NAME_FIXES = {
 }
 
 
-def get_stats():
+def main():
+    results = get_results()
 
-    teams = get_teams()
-    team_stats = dict()
+    # teams = [NAME_FIXES.get(name, name) for name in results.keys()]
+    teams = results.keys()
+    shots = get_shots(teams)
 
-    for team_name, stats in teams.items():
-        url = URL.format(team=team_name.replace(' ','_'), year=YEAR)
+    with open('results.json', 'w', encoding='utf-8') as f:
+         json.dump(results, f, ensure_ascii=False, indent=4)
+    with open('shots.json', 'w', encoding='utf-8') as f:
+         json.dump(shots, f, ensure_ascii=False, indent=4)
 
-        print(f'Getting data from: {url}')
 
-        page = requests.get(url)
-        soup = BeautifulSoup(page.text, 'html.parser')
-
-        script_tag = soup.find('script', string=lambda x: 'statisticsData' in x)
-        json_data = script_tag.text.split('statisticsData = JSON.parse(')[1].split(');')[0].replace('\'', '')
-        decoded_json = json_data.encode().decode('unicode-escape')
-        as_json = json.loads(decoded_json)
-        from_corner = as_json['situation']['FromCorner']
-
-        against_dict = from_corner.pop('against')
-
-        from_corner['shots_against'] = against_dict.get('shots')
-        from_corner['goals_against'] = against_dict.get('goals')
-        from_corner['xGA'] = against_dict.get('xG')
-
-        team_stats[team_name] = {**stats, **from_corner}
-    
-
-    with open('data.json', 'w', encoding='utf-8') as f:
-        json.dump(team_stats, f, ensure_ascii=False, indent=4)
-    
-
-def get_teams():
+def get_results():
     season_id = {
         "All Seasons": "-1",
         "2024/25": "719",
@@ -107,16 +78,40 @@ def get_teams():
     if response.status_code == 200:
         data = response.json()
     
-    # print(len(data['tables']))
     team_stats = data['tables'][0]['entries']
 
     teams = {}
     for team in team_stats:
         team_name = team['team']['name']
 
-        teams[team_name] = {}
-        teams[team_name]['overall'] = team['overall']
-        teams[team_name]['home'] = team['home']
-        teams[team_name]['away'] = team['away']
+        teams[NAME_FIXES.get(team_name, team_name)] = {
+            "overall": team['overall'],
+            "home": team["home"],
+            "away": team["away"]
+        }
 
     return dict(sorted(teams.items()))
+
+
+def get_shots(teams: list):
+    
+    stats = {}
+    for team_name in teams:
+        url = URL.format(team=team_name.replace(' ','_'), year=YEAR)
+
+        print(f'Getting data from: {url}')
+
+        page = requests.get(url)
+        soup = BeautifulSoup(page.text, 'html.parser')
+
+        script_tag = soup.find('script', string=lambda x: 'statisticsData' in x)
+        json_data = script_tag.text.split('statisticsData = JSON.parse(')[1].split(');')[0].replace('\'', '')
+        decoded_json = json_data.encode().decode('unicode-escape')
+        as_json = json.loads(decoded_json)
+        
+        stats[team_name] = as_json
+    
+    return stats
+
+
+main()
