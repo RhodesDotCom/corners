@@ -2,3 +2,4 @@ jupyter
 pandas
 BeautifulSoup4
 selenium
+plotly_express
